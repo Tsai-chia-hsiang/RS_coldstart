@@ -67,9 +67,7 @@ def user_item_clustering(User_Item_df:pd.DataFrame, num_clusters:list, savingpat
     )
     
     plotLoss(
-        loss=h['loss'], savename=os.path.join(
-            mf_model_path, "mse.jpg"
-        ),
+        loss=h['loss'], savename=os.path.join(mf_model_path, "mse.jpg"),
         showinline=plot_show
     )
 

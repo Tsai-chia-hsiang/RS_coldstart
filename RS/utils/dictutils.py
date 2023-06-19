@@ -1,6 +1,7 @@
 import os
 import json
-
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 __all__ = ['loadjson','writejson']
 
