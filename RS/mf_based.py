@@ -65,9 +65,7 @@ def Cross_MF(
     )['prediction']
     print("MF done ..")
 
-    testing_user_book_prediction = prediction[
-        testing_range:, 0:1000
-    ].numpy()
+    testing_user_book_prediction = prediction[testing_range:, 0:1000].numpy()
 
     
     print("generate recommend list ..")
