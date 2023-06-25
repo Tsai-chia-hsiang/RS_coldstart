@@ -44,11 +44,11 @@ by using popular categories directly.
 
 in the folder ```RS```
 
-### ```commoncourse.py```(our method)
+### ```courseEmd.py```(our method)
 
-It recommends cold start users by using the records of the training users who had taken the common courses to him/her.  
+It recommends cold start users by using the records of the training users who had taken the common courses to them.  
 
-**Can execute it directly, or call it in ```recommendation.ipynb```**
+**Can execute it directly, or call it inside ```recommendation.ipynb```**
 
 ### ```MatrixFactorization```
 
