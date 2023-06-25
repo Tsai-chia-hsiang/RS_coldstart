@@ -11,10 +11,8 @@ from utils.dataset import Dataset as Mydataset
 
 def build_2domain_feature_extraction_matrix(
     d1_matrix:torch.Tensor,d2_matrix:torch.Tensor,
-    normalize_domain:list = [],
-    device:torch.device = torch.device('cpu'),
-    savingpath:os.PathLike=None,
-    saving_type:list=['torch','numpy'],
+    normalize_domain:list = [],device:torch.device = torch.device('cpu'),
+    savingpath:os.PathLike=None,saving_type:list=['torch','numpy'],
     return_result:bool=True
 )->torch.Tensor:
     """
@@ -81,29 +79,6 @@ def build_2domain_feature_extraction_matrix(
     if return_result:
         return r
 
-
-def topK_with_cf(
-    train_user_book_course_matrix: np.ndarray,
-    test_users:list,test_user_course_matrix:np.ndarray,
-    savingpath:os.PathLike=None
-)->dict:
-
-    recommend_list = {}
-    for i, uid in enumerate(tqdm(test_users)):
-        testi = test_user_course_matrix[i][:]
-        itscourses = np.where(testi>0)[0]
-        cf = np.sum(
-            train_user_book_course_matrix[:, itscourses],
-            axis=1
-        )/itscourses.shape[0]
-        recommend_list[uid] = item_order(cf)
-    
-    if savingpath is not None:
-        writejson(recommend_list, savingpath)
-    else:
-        return recommend_list
-
-    
 
 
 def recommend_according_course_selection_records(
