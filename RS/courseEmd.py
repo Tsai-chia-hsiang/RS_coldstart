@@ -38,24 +38,25 @@ def build_2domain_feature_extraction_matrix(
         
         (e.g. ('d1', 'd2'))
     
-    - ```savingpath```:
+    - ```savingpath``` :
         the result saving path.
         default is ```None```, which means no write to disk.
         if set a path, then will save it as the 
         
-        ```saving_type```
+    -  ```saving_type```
         (The torch format will automatically 
         fill ```.pt``` to postfix)
     
-    - ```device```: 
-    
+    - ```device``` : 
         torch.device
-    - ```return_result```: 
+    
+    - ```return_result``` : 
         Wether the result needed to be return.
         defualt : Ture
     """
     if d1_matrix.size()[0] != d2_matrix.size()[0]:
-        print("Error! User numbers are not the same!")
+        print("Error! Inner numbers are not same!")
+        print(f"{d1_matrix.size()[0]} * {d2_matrix.size()[0]}")
         return None
     
     d1_ = d1_matrix.to(device=device, dtype=torch.double)
@@ -84,7 +85,7 @@ def build_2domain_feature_extraction_matrix(
 def topK_with_cf(
     train_user_book_course_matrix: np.ndarray,
     test_users:list,test_user_course_matrix:np.ndarray,
-    savingpath:os.PathLike
+    savingpath:os.PathLike=None
 )->dict:
 
     recommend_list = {}
@@ -97,10 +98,17 @@ def topK_with_cf(
         )/itscourses.shape[0]
         recommend_list[uid] = item_order(cf)
     
-    writejson(recommend_list, savingpath)
+    if savingpath is not None:
+        writejson(recommend_list, savingpath)
+    else:
+        return recommend_list
+
+    
 
 
-def recommend_according_course_selection_records(dataset:Mydataset, resultroot:os.PathLike, d:torch.device):
+def recommend_according_course_selection_records(
+    dataset:Mydataset, resultroot:os.PathLike, d:torch.device
+):
     
     """
     resultroot 
@@ -114,19 +122,17 @@ def recommend_according_course_selection_records(dataset:Mydataset, resultroot:o
     """
     
     training_user_course_tensor = dataset.extraction_value(
-        "training_user_course",
-        dropout_col=['uid'], to_torch=True
+        "training_user_course",dropout_col=['uid'], to_torch=True
     )
     training_user_book_tensor = dataset.extraction_value(
-        "training_user_book", 
-        dropout_col=['uid'], to_torch=True
+        "training_user_book", dropout_col=['uid'], to_torch=True
     )
-    print("build book x user ..", end=" ")
-    book_user_matrix= build_2domain_feature_extraction_matrix(
+    print("build book x course ..", end=" ")
+
+    book_course_matrix = build_2domain_feature_extraction_matrix(
         d1_matrix=training_user_book_tensor, 
         d2_matrix=training_user_course_tensor,
-        normalize_domain=['d2'],
-        device=d,
+        normalize_domain=['d2'],device=d,
         savingpath=os.path.join(resultroot, "bookcate3_course")
     )
     print("OK ..")
@@ -137,18 +143,25 @@ def recommend_according_course_selection_records(dataset:Mydataset, resultroot:o
         dataset.getdata(dataname="testing_user_course").uid.tolist()
     ))
     test_user_course_matrix = dataset.extraction_value(
-        dname="testing_user_course", dropout_col=['uid']
+        dname="testing_user_course", dropout_col=['uid'],to_torch=True
     )
     #print(test_user_course_matrix.shape)
 
     print("prediction ..")
+    test_user_book_matrix = build_2domain_feature_extraction_matrix(
+        d1_matrix=test_user_course_matrix.T,
+        d2_matrix=book_course_matrix.T,
+        normalize_domain=['d1'],
+        savingpath=os.path.join(resultroot, "prediction"),
+        return_result=True
+    ).numpy()
+
     rslist_save_to=os.path.join(resultroot, "recommendlist.json")
-    prediction = topK_with_cf(
-        train_user_book_course_matrix=book_user_matrix.numpy(),
-        test_users=test_user,
-        test_user_course_matrix=test_user_course_matrix,
-        savingpath=rslist_save_to
-    )
+    prediction = {}
+    for i, t in enumerate(tqdm(test_user)):
+        testi_score = test_user_book_matrix[i]
+        prediction[t] = item_order(testi_score)
+    writejson(prediction, rslist_save_to)
     print(f"OK .. save at {rslist_save_to}")
     return rslist_save_to
 
@@ -161,40 +174,24 @@ def main():
     
     """
     dataroot = os.path.join("..","data")
-    resultroot = os.path.join("..", "result", "commoncourse")
-    """
+    
     dataset = Mydataset(datafolder = {
-        'training_user_course':os.path.join(
-            dataroot,"course","train.csv"
-        ),
-        'training_user_book':os.path.join(
-            dataroot,"book","user_cate3_train.csv"
-        ),
-        'testing_user_course':os.path.join(
-            dataroot, "course", "test.csv"
-        )
-    }
-    )
+        'training_user_course':os.path.join(dataroot,"course","train.csv"),
+        'training_user_book':os.path.join(dataroot,"book","user_cate3_train.csv"),
+        'testing_user_course':os.path.join(dataroot, "course", "test.csv")
+    })
 
-    
-    if not os.path.exists(resultroot):
-        os.mkdir(resultroot)
-    
-    rslist_saving_path = generate_rslist(
-        dataset=dataset, 
-        resultroot=resultroot, 
-        d=torch.device('cuda:3')
-    )
-    """
-    rslist_saving_path=os.path.join(
-        resultroot, "recommendlist.json"
+    resultroot = os.path.join("..", "result", "courseEmd")
+    rslist_saving_path=recommend_according_course_selection_records(
+        dataset=dataset, resultroot=resultroot,d=torch.device('cuda:3')
     )
 
     Evaluate(
         result_root=resultroot, 
         recommendlist = rslist_saving_path,
         gth = os.path.join("..", "result", "testing_user_groundtruth.json"),
-        item_list=list(str(i) for i in range(1000))
+        item_list=list(str(i) for i in range(1000)),
+        topN_range=30
     )
 
 
